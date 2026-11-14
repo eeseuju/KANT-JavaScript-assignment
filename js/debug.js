@@ -1,11 +1,11 @@
 // todo.js의 STORAGE_KEY와 같은 이름이어야 같은 데이터를 읽음
-const STORAGE_KEY = "todo-list";
+const STORAGE_KEY = 'todo-list';
 
-const keyName = document.getElementById("key-name");
-const output = document.getElementById("output");
-const totalCount = document.getElementById("total-count");
-const doneCount = document.getElementById("done-count");
-const updatedAt = document.getElementById("updated-at");
+const keyName = document.getElementById('key-name');
+const output = document.getElementById('output');
+const totalCount = document.getElementById('total-count');
+const doneCount = document.getElementById('done-count');
+const updatedAt = document.getElementById('updated-at');
 
 let lastSaved;   // 지난번에 읽은 값 (바뀌었는지 비교용). 처음에는 비교할 값이 없어서 꼭 한 번은 그려짐
 
@@ -29,7 +29,7 @@ function refresh() {
 
   // 저장된 게 없을 때
   if (saved === null) {
-    show("저장된 데이터가 없습니다.", 0, 0);
+    show('저장된 데이터가 없습니다.', 0, 0);
     return;
   }
 
@@ -38,13 +38,13 @@ function refresh() {
   try {
     todos = JSON.parse(saved);
   } catch (error) {
-    show("저장된 값이 올바른 JSON이 아닙니다.\n\n" + saved, "-", "-");
+    show('저장된 값이 올바른 JSON이 아닙니다.\n\n' + saved, '-', '-');
     return;
   }
 
   // JSON이지만 목록(배열)이 아닐 때
   if (Array.isArray(todos) === false) {
-    show("저장된 값이 목록(배열)이 아닙니다.\n\n" + JSON.stringify(todos, null, 2), "-", "-");
+    show('저장된 값이 목록(배열)이 아닙니다.\n\n' + JSON.stringify(todos, null, 2), '-', '-');
     return;
   }
 
