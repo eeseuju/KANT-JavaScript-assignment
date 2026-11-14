@@ -279,7 +279,7 @@ function makeCheckButton(todo) {
   btn.className = "w-5 h-5 mt-0.5 shrink-0 rounded-full border-2 text-xs leading-none flex items-center justify-center";
   if (todo.done) {
     // 머테리얼 아이콘 (!text-sm: 아이콘 크기를 14px로 강제)
-    btn.className += " bg-[#228B22] border-[#228B22] text-white material-symbols-outlined !text-sm";
+    btn.className += " bg-brand border-brand text-white material-symbols-outlined !text-sm";
     btn.textContent = "check";   // 아이콘 이름
     btn.title = "미완료로 표시";   // 마우스를 올리면 뜨는 말풍선
   } else {
@@ -310,7 +310,7 @@ function makeTitle(todo) {
 function makeDateLabel(todo, today) {
   const label = document.createElement("span");
   const color = isOverdue(todo, today)
-    ? "border-[#ffa500] text-[#ffa500]"
+    ? "border-warn text-warn"
     : "border-gray-300 text-gray-500";
   label.className = `inline-flex items-center gap-1 mt-2 px-2 py-1 text-xs border rounded-full ${color}`;
 
@@ -331,8 +331,8 @@ function makeButtons() {
   const box = document.createElement("div");
   box.className = "flex gap-2 self-end shrink-0 whitespace-nowrap";
   box.append(
-    createActionButton("수정", "edit", "text-[#228B22]"),
-    createActionButton("삭제", "delete", "text-[#f87171]")
+    createActionButton("수정", "edit", "text-brand"),
+    createActionButton("삭제", "delete", "text-danger")
   );
   return box;
 }

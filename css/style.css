@@ -45,3 +45,64 @@ body {
     transform: translate(-50%, -150%) scale(1);
   }
 }
+
+/* 색상: 여기서만 정하고, 나머지는 이름(brand, warn, danger)으로 가져다 씀 */
+:root {
+  --color-brand: #228B22;    /* 기본 초록 */
+  --color-warn: #ffa500;     /* 지난 날짜 주황 */
+  --color-danger: #f87171;   /* 삭제 빨강 */
+}
+
+/* 팝업 아래쪽의 둥근 버튼 */
+.btn {
+  padding: 0.5rem 1rem;
+  border-radius: 9999px;
+  font-size: 0.875rem;
+  line-height: 1.25rem;
+}
+
+.btn-primary {
+  background-color: var(--color-brand);
+  color: #fff;
+}
+
+.btn-text {
+  color: var(--color-brand);
+}
+
+/* 상태 필터 버튼: 모양 전체 + 선택(aria-pressed)되면 기본 색으로 채움 */
+.filter-chip {
+  padding: 0.25rem 0.75rem;
+  font-size: 0.75rem;
+  line-height: 1rem;
+  border-radius: 9999px;
+  border: 1px solid #d1d5db;   /* Tailwind gray-300 */
+  color: #4b5563;              /* Tailwind gray-600 */
+}
+
+.filter-chip[aria-pressed="true"] {
+  background-color: var(--color-brand);
+  border-color: var(--color-brand);
+  color: #fff;
+}
+
+/* 입력칸 (날짜, 시간, 내용) */
+.field {
+  background-color: #f3f4f6;   /* Tailwind gray-100 */
+  border-radius: 0.25rem;
+  padding: 0.5rem 0.75rem;
+  font-size: 0.875rem;
+  line-height: 1.25rem;
+}
+
+.field:invalid {
+  color: #9ca3af;   /* Tailwind gray-400: 아직 비어 있는 날짜/시간 */
+}
+
+/* 팝업 안의 흰 카드 (너비와 모서리 크기는 팝업마다 Tailwind 클래스로 따로 지정) */
+.popup-card {
+  background-color: #fff;
+  border-radius: 1rem;
+  padding: 1.5rem;
+  box-shadow: 0 20px 25px -5px rgb(0 0 0 / 0.1), 0 8px 10px -6px rgb(0 0 0 / 0.1);   /* Tailwind shadow-xl */
+}
