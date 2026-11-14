@@ -70,7 +70,7 @@
 
     <!-- 목록 -->
     <ul id="todo-list"></ul>
-    <p id="empty-msg" class="text-center text-gray-500 text-sm py-16 hidden">등록된 할 일이 없습니다.</p>
+    <p id="empty-msg" class="text-center text-gray-500 text-sm py-16 hidden"></p>
 
     <!-- 전체 삭제 버튼 (목록이 비어 있으면 숨김) -->
     <div id="clear-area" class="flex justify-end mt-auto px-6 pt-4 pb-4">
@@ -88,7 +88,7 @@
 
       <!-- 닫기(취소) 버튼 -->
       <div class="flex justify-end">
-        <button id="form-cancel-btn" class="material-symbols-outlined text-gray-500 hover:bg-gray-100 rounded-full p-1">close</button>
+        <button id="form-cancel-btn" data-close class="material-symbols-outlined text-gray-500 hover:bg-gray-100 rounded-full p-1">close</button>
       </div>
 
       <!-- 제목 -->
@@ -125,7 +125,7 @@
       <p id="detail-date" class="text-sm text-gray-500 mb-4"></p>
       <p id="detail-content" class="text-sm text-gray-500 whitespace-pre-wrap break-words mb-6"></p>
       <div class="flex justify-end">
-        <button id="detail-close-btn" class="btn btn-primary">닫기</button>
+        <button id="detail-close-btn" data-close class="btn btn-primary">닫기</button>
       </div>
     </div>
   </div>
@@ -136,7 +136,7 @@
       <h2 id="delete-title" class="text-lg mb-2 break-words"></h2>
       <p class="text-sm text-gray-500 mb-4">이 할 일을 삭제할까요?</p>
       <div class="flex justify-end gap-2">
-        <button id="delete-cancel-btn" class="btn btn-text hover:bg-green-50">취소</button>
+        <button id="delete-cancel-btn" data-close class="btn btn-text hover:bg-green-50">취소</button>
         <button id="delete-ok-btn" class="btn btn-primary">삭제</button>
       </div>
     </div>

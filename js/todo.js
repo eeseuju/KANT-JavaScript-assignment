@@ -13,6 +13,7 @@ let todos = [];                        // 할 일 목록 (id, date, time, title,
 let editingId = null;                  // 수정 중인 항목의 id (추가 중이면 null)
 let deletingId = null;                 // 삭제하려는 항목의 id
 const view = { search: "", filter: "all", sort: "created" };   // 지금 어떻게 보고 있는지 (저장 안 함)
+const EMPTY_FORM = { title: "", content: "", date: "", time: "" };   // 빈 입력칸 값 (새 할 일의 기본값으로도 씀)
 
 // 2. HTML 요소 가져오기
 const mainInput = document.getElementById("main-input");
@@ -30,18 +31,15 @@ const titleInput = document.getElementById("title-input");
 const contentInput = document.getElementById("content-input");
 const errorMsg = document.getElementById("error-msg");
 const formOkBtn = document.getElementById("form-ok-btn");
-const formCancelBtn = document.getElementById("form-cancel-btn");
 
 const detailPopup = document.getElementById("detail-popup");
 const detailTitle = document.getElementById("detail-title");
 const detailDate = document.getElementById("detail-date");
 const detailContent = document.getElementById("detail-content");
-const detailCloseBtn = document.getElementById("detail-close-btn");
 
 const deletePopup = document.getElementById("delete-popup");
 const deleteTitle = document.getElementById("delete-title");
 const deleteOkBtn = document.getElementById("delete-ok-btn");
-const deleteCancelBtn = document.getElementById("delete-cancel-btn");
 
 const searchInput = document.getElementById("search-input");
 const sortSelect = document.getElementById("sort-select");
@@ -106,7 +104,7 @@ function loadTodos() {
   }
 }
 
-// 3-2. 데이터 함수 (화면을 건드리지 않는 순수 함수: 새 배열, 객체를 돌려줌)
+// 3-2. 데이터 함수 (할 일 목록을 다루는 함수: 새 배열, 객체를 돌려줌)
 
 // id가 같은 항목 찾기 (없으면 undefined)
 // [순수 함수] [고차 함수 사용: find]
@@ -117,14 +115,7 @@ function findTodo(list, id) {
 // 입력값으로 새 할 일 객체 만들기
 // (id에 현재 시간을 써서 같은 입력이라도 id가 달라지므로 완전한 순수 함수는 아님)
 function createTodo(fields) {
-  return {
-    id: Date.now(),   // 현재 시간(숫자)을 고유 id로 사용
-    title: fields.title,
-    content: fields.content || "",
-    date: fields.date || "",
-    time: fields.time || "",
-    done: false
-  };
+  return { id: Date.now(), ...EMPTY_FORM, ...fields, done: false };   // 기본값 위에 입력값을 덮어씀
 }
 
 // 맨 뒤에 추가한 새 배열
@@ -151,6 +142,8 @@ function toggleTodo(list, id) {
   return list.map(todo => (todo.id === id ? { ...todo, done: !todo.done } : todo));
 }
 
+// 3-3. 날짜 함수
+
 // 오늘 날짜를 "2026-11-15" 형식 글자로
 // (현재 시간을 읽으므로 순수 함수는 아님)
 function getToday() {
@@ -159,6 +152,55 @@ function getToday() {
   const day = String(now.getDate()).padStart(2, "0");
   return `${now.getFullYear()}-${month}-${day}`;
 }
+
+// 날짜가 오늘보다 이전이면 true (완료한 항목이나 날짜가 없는 항목은 false)
+// [순수 함수] today를 넘겨주면 항상 같은 결과 (안 넘기면 getToday()로 현재 날짜를 읽음)
+function isOverdue(todo, today = getToday()) {
+  return todo.done === false && todo.date !== "" && todo.date < today;
+}
+
+// 날짜와 시간을 보여줄 글자로 만들기 (예: "2026-10-02 10:30")
+// (올해인지 판단하려고 현재 시간을 읽으므로 순수 함수는 아님)
+function makeDateText(todo) {
+  let text = "";
+  if (todo.date) {
+    // "2026-10-02"를 "-" 기준으로 잘라서 [년, 월, 일]로 만들기
+    const parts = todo.date.split("-");
+    const year = Number(parts[0]);
+    const month = Number(parts[1]);   // Number()로 "02"를 2로 바꿈
+    const day = Number(parts[2]);
+
+    if (year === new Date().getFullYear()) {
+      text = month + "월 " + day + "일";                 // 올해: 10월 2일
+    } else {
+      text = year + "년 " + month + "월 " + day + "일";   // 다른 해: 2027년 5월 22일
+    }
+  }
+  if (todo.time) {   // 이전에 저장한 데이터는 time이 없을 수 있음
+    text = (text + " " + todo.time).trim();
+  }
+  if (text === "") {
+    text = "날짜 없음";
+  }
+  return text;
+}
+
+// 날짜순 비교: 날짜(+시간)가 빠른 순, 날짜 없는 항목은 맨 뒤 (sort에 넘겨 쓰는 비교 함수)
+// [순수 함수]
+function compareByDate(a, b) {
+  if (a.date === "" && b.date === "") {
+    return 0;
+  }
+  if (a.date === "") {
+    return 1;
+  }
+  if (b.date === "") {
+    return -1;
+  }
+  return `${a.date} ${a.time}`.localeCompare(`${b.date} ${b.time}`);
+}
+
+// 3-4. 조회 함수 (검색·필터·정렬·개수)
 
 // 검색어가 제목이나 내용에 들어 있는지 (대소문자 무시, 검색어가 비면 전부 통과)
 // [순수 함수]
@@ -179,21 +221,6 @@ function matchesFilter(todo, filter) {
     return todo.done === true;
   }
   return true;
-}
-
-// 날짜순 비교: 날짜(+시간)가 빠른 순, 날짜 없는 항목은 맨 뒤 (sort에 넘겨 쓰는 비교 함수)
-// [순수 함수]
-function compareByDate(a, b) {
-  if (a.date === "" && b.date === "") {
-    return 0;
-  }
-  if (a.date === "") {
-    return 1;
-  }
-  if (b.date === "") {
-    return -1;
-  }
-  return `${a.date} ${a.time}`.localeCompare(`${b.date} ${b.time}`);
 }
 
 // 화면에 보여줄 목록 = 필터 → 검색 → 정렬 (원본 list는 바뀌지 않음)
@@ -220,6 +247,8 @@ function makeCountText(allTodos, visibleTodos) {
   return text;
 }
 
+// 3-5. 입력 검증
+
 // 제목 검사: 문제가 있으면 안내 문구, 없으면 빈 글자("")를 돌려줌
 // [순수 함수]
 function validateTitle(title) {
@@ -232,7 +261,7 @@ function validateTitle(title) {
   return "";
 }
 
-// 3-3. 목록을 새 값으로 바꾸고, 저장하고, 화면을 다시 그리기 (세 단계를 한 번에)
+// 3-6. 상태 바꾸기 (목록을 새 값으로 바꾸고, 저장하고, 화면을 다시 그리기)
 function setTodos(nextTodos) {
   todos = nextTodos;
   saveTodos();
@@ -346,37 +375,7 @@ function createActionButton(label, action, colorClass) {
   return btn;
 }
 
-// 날짜가 오늘보다 이전이면 true (완료한 항목이나 날짜가 없는 항목은 false)
-// [순수 함수] today를 넘겨주면 항상 같은 결과 (안 넘기면 getToday()로 현재 날짜를 읽음)
-function isOverdue(todo, today = getToday()) {
-  return todo.done === false && todo.date !== "" && todo.date < today;
-}
-
-// 날짜와 시간을 보여줄 글자로 만들기 (예: "2026-10-02 10:30")
-// (올해인지 판단하려고 현재 시간을 읽으므로 순수 함수는 아님)
-function makeDateText(todo) {
-  let text = "";
-  if (todo.date) {
-    // "2026-10-02"를 "-" 기준으로 잘라서 [년, 월, 일]로 만들기
-    const parts = todo.date.split("-");
-    const year = Number(parts[0]);
-    const month = Number(parts[1]);   // Number()로 "02"를 2로 바꿈
-    const day = Number(parts[2]);
-
-    if (year === new Date().getFullYear()) {
-      text = month + "월 " + day + "일";                 // 올해: 10월 2일
-    } else {
-      text = year + "년 " + month + "월 " + day + "일";   // 다른 해: 2027년 5월 22일
-    }
-  }
-  if (todo.time) {   // 이전에 저장한 데이터는 time이 없을 수 있음
-    text = (text + " " + todo.time).trim();
-  }
-  if (text === "") {
-    text = "날짜 없음";
-  }
-  return text;
-}
+// 5. 할 일 동작
 
 // 완료 체크 바꾸기
 function toggleDone(id) {
@@ -392,15 +391,38 @@ function toggleDone(id) {
   }
 }
 
-// 따봉을 보여주고 1초 뒤에 숨기기
+// 따봉 보이기 (사라지는 시간은 style.css의 animation 길이 하나로만 정함)
 function showThumb() {
-  thumb.classList.remove("hidden");
-  setTimeout(function () {
-    thumb.classList.add("hidden");
-  }, 1000);   // 1000 = 1초
+  thumb.classList.remove("hidden");   // 다시 보이면 애니메이션이 처음부터 시작됨
 }
 
-// 5-1. 팝업 열기/닫기 (모든 팝업이 같이 씀)
+// 애니메이션이 끝나면 따봉 숨기기
+function hideThumb() {
+  thumb.classList.add("hidden");
+}
+
+// 빠른 추가: 제목만 넣고 바로 등록 (날짜, 시간, 내용은 비워둠)
+function quickAdd() {
+  const title = mainInput.value.trim();
+  if (validateTitle(title) !== "") {
+    return;   // 비었으면 조용히 무시 (너무 긴 제목은 입력창 maxlength가 이미 막음)
+  }
+
+  setTodos(addTodo(todos, createTodo({ title: title })));
+  mainInput.value = "";
+}
+
+// 전체 삭제 (확인창에서 '확인'을 눌렀을 때만)
+function clearAll() {
+  const ok = confirm(`할 일 ${todos.length}개를 모두 삭제할까요? (필터와 상관없이 전체) 되돌릴 수 없습니다.`);
+  if (ok === false) {
+    return;
+  }
+
+  setTodos([]);
+}
+
+// 6-1. 팝업 열기/닫기 (모든 팝업이 같이 씀)
 function openPopup(popup) {
   popup.classList.remove("hidden");
 }
@@ -409,7 +431,7 @@ function closePopup(popup) {
   popup.classList.add("hidden");
 }
 
-// 5-2. 상세 보기 팝업
+// 6-2. 상세 보기 팝업
 function openDetailPopup(id) {
   const todo = findTodo(todos, id);
   if (todo === undefined) {
@@ -429,22 +451,9 @@ function openDetailPopup(id) {
   openPopup(detailPopup);
 }
 
-// 6. 추가 / 수정 팝업
-
-// 빠른 추가: 제목만 넣고 바로 등록 (날짜, 시간, 내용은 비워둠)
-function quickAdd() {
-  const title = mainInput.value.trim();
-  if (validateTitle(title) !== "") {
-    return;   // 비었으면 조용히 무시 (너무 긴 제목은 입력창 maxlength가 이미 막음)
-  }
-
-  setTodos(addTodo(todos, createTodo({ title: title })));
-  mainInput.value = "";
-}
+// 6-3. 추가 / 수정 팝업
 
 // 추가/수정 팝업 열기: todo의 값을 입력칸에 채움 (id가 있으면 수정, 없으면 추가)
-const EMPTY_FORM = { title: "", content: "", date: "", time: "" };
-
 function openFormPopup(todo, id = null) {
   editingId = id;
   titleInput.value = todo.title;
@@ -496,7 +505,7 @@ function submitForm() {
   closePopup(formPopup);
 }
 
-// 7. 삭제 팝업
+// 6-4. 삭제 팝업
 function openDeletePopup(id) {
   const todo = findTodo(todos, id);
   if (todo === undefined) {
@@ -517,17 +526,7 @@ function confirmDelete() {
   closePopup(deletePopup);
 }
 
-// 전체 삭제 (확인창에서 '확인'을 눌렀을 때만)
-function clearAll() {
-  const ok = confirm(`할 일 ${todos.length}개를 모두 삭제할까요? (필터와 상관없이 전체) 되돌릴 수 없습니다.`);
-  if (ok === false) {
-    return;
-  }
-
-  setTodos([]);
-}
-
-// 8. 이벤트 연결
+// 7. 이벤트 처리
 
 // 동작 이름 → 실행할 함수 (모두 id를 받음)
 const LIST_ACTIONS = {
@@ -556,6 +555,27 @@ function handleListClick(event) {
   }
 }
 
+// 닫기 버튼: data-close가 있는 버튼을 누르면 그 버튼이 들어 있는 팝업을 닫음
+function handleCloseClick(event) {
+  const btn = event.target.closest("[data-close]");
+  if (btn === null) {
+    return;   // 닫기 버튼이 아님
+  }
+
+  const popup = btn.closest(".popup");
+  if (popup !== null) {
+    closePopup(popup);
+  }
+}
+
+// 팝업의 어두운 배경(.popup 자체)을 누르면 닫기
+// (click이 아니라 mousedown: 입력창에서 드래그하다 배경에서 놓아도 닫히지 않게)
+function handleBackdropMousedown(event) {
+  if (event.target.classList.contains("popup")) {
+    closePopup(event.target);
+  }
+}
+
 // 키보드: document 하나에서 모든 키 입력을 받음
 // [고차 함수 사용: forEach]
 function handleKeydown(event) {
@@ -573,43 +593,7 @@ function handleKeydown(event) {
   }
 }
 
-// 팝업의 어두운 배경(.popup 자체)을 누르면 닫기
-// (click이 아니라 mousedown: 입력창에서 드래그하다 배경에서 놓아도 닫히지 않게)
-function handleBackdropMousedown(event) {
-  if (event.target.classList.contains("popup")) {
-    closePopup(event.target);
-  }
-}
-
-todoList.addEventListener("click", handleListClick);
-document.addEventListener("keydown", handleKeydown);
-document.addEventListener("mousedown", handleBackdropMousedown);
-
-// 하나뿐인 정적 버튼은 위임 없이 직접 연결
-clearBtn.addEventListener("click", clearAll);
-openFormBtn.addEventListener("click", openAddPopup);
-formOkBtn.addEventListener("click", submitForm);
-formCancelBtn.addEventListener("click", () => closePopup(formPopup));
-detailCloseBtn.addEventListener("click", () => closePopup(detailPopup));
-deleteOkBtn.addEventListener("click", confirmDelete);
-deleteCancelBtn.addEventListener("click", () => closePopup(deletePopup));
-
-// 마지막 호출 후 delay(ms) 동안 또 호출되지 않을 때만 fn을 한 번 실행 (키 입력마다 다시 그리는 낭비 방지)
-// [고차 함수] 함수를 받아서 새 함수를 돌려줌
-function debounce(fn, delay) {
-  let timer;
-  return (...args) => {
-    clearTimeout(timer);
-    timer = setTimeout(() => fn(...args), delay);
-  };
-}
-
-// 조회 조건 바꾸기: 검색어 / 상태 필터 / 정렬
-const handleSearchInput = debounce(() => {
-  view.search = searchInput.value;
-  renderTodos();
-}, 200);
-
+// 조회 조건 바꾸기: 상태 필터 / 정렬 / 검색어
 function handleFilterClick(event) {
   const btn = event.target.closest("[data-filter]");
   if (btn === null) {
@@ -624,10 +608,37 @@ function handleSortChange() {
   renderTodos();
 }
 
-searchInput.addEventListener("input", handleSearchInput);
-filterGroup.addEventListener("click", handleFilterClick);   // 버튼 3개지만 위임으로 리스너 1개
-sortSelect.addEventListener("change", handleSortChange);
+// 마지막 호출 후 delay(ms) 동안 또 호출되지 않을 때만 fn을 한 번 실행 (키 입력마다 다시 그리는 낭비 방지)
+// [고차 함수] 함수를 받아서 새 함수를 돌려줌
+function debounce(fn, delay) {
+  let timer;
+  return (...args) => {
+    clearTimeout(timer);
+    timer = setTimeout(() => fn(...args), delay);
+  };
+}
 
-// 9. 앱 시작
-todos = loadTodos();   // 이전: loadTodos();
+const handleSearchInput = debounce(() => {
+  view.search = searchInput.value;
+  renderTodos();
+}, 200);
+
+// 이벤트 연결 (한 곳에 모아 둠)
+todoList.addEventListener("click", handleListClick);               // 목록 안 버튼들 (위임)
+document.addEventListener("click", handleCloseClick);              // 팝업 닫기 버튼들 (위임)
+document.addEventListener("mousedown", handleBackdropMousedown);   // 팝업 배경
+document.addEventListener("keydown", handleKeydown);               // Esc, Enter
+thumb.addEventListener("animationend", hideThumb);                 // 따봉 애니메이션이 끝나면 숨김
+filterGroup.addEventListener("click", handleFilterClick);          // 버튼 3개지만 위임으로 리스너 1개
+sortSelect.addEventListener("change", handleSortChange);
+searchInput.addEventListener("input", handleSearchInput);
+
+// 하나뿐인 정적 버튼은 위임 없이 직접 연결
+clearBtn.addEventListener("click", clearAll);
+openFormBtn.addEventListener("click", openAddPopup);
+formOkBtn.addEventListener("click", submitForm);
+deleteOkBtn.addEventListener("click", confirmDelete);
+
+// 8. 앱 시작
+todos = loadTodos();
 renderTodos();
