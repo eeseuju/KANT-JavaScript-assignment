@@ -1,8 +1,15 @@
+// 함수 라벨 안내 (함수 바로 위 주석에 붙어 있음)
+//   [순수 함수]       같은 값을 넣으면 항상 같은 결과이고, 화면·전역 변수·넘겨받은 배열을 바꾸지 않음
+//   [고차 함수]       함수를 받거나 돌려주는 함수 자체 (예: debounce)
+//   [고차 함수 사용]  함수를 받는 배열 메서드(filter, map, find, reduce, sort, forEach)를 씀 (괄호 안에 무엇을 썼는지)
+//   라벨이 없는 함수는 화면(DOM)·저장소·전역 상태를 직접 바꾸는 함수
+
 // 1. 데이터
 const STORAGE_KEY = "todo-list";       // localStorage에 저장할 이름(키)
 let todos = [];                        // 할 일 목록 (id, date, time, title, content, done)
 let editingId = null;                  // 수정 중인 항목의 id (추가 중이면 null)
 let deletingId = null;                 // 삭제하려는 항목의 id
+const view = { search: "", filter: "all", sort: "created" };   // 지금 어떻게 보고 있는지 (저장 안 함)
 
 // 2. HTML 요소 가져오기
 const mainInput = document.getElementById("main-input");
@@ -33,6 +40,12 @@ const deleteTitle = document.getElementById("delete-title");
 const deleteOkBtn = document.getElementById("delete-ok-btn");
 const deleteCancelBtn = document.getElementById("delete-cancel-btn");
 
+const searchInput = document.getElementById("search-input");
+const sortSelect = document.getElementById("sort-select");
+const filterGroup = document.getElementById("filter-group");
+const filterButtons = filterGroup.querySelectorAll("button");
+const countText = document.getElementById("count-text");
+
 // 3-1. 저장 / 불러오기
 function saveTodos() {
   try {
@@ -45,6 +58,7 @@ function saveTodos() {
 }
 
 // 항목 하나가 쓸 수 있는 모양인지 검사 (id는 숫자, title은 문자열이어야 함)
+// [순수 함수]
 function isValidTodo(item) {
   return item !== null
     && typeof item === "object"
@@ -53,6 +67,7 @@ function isValidTodo(item) {
 }
 
 // 빠진 칸(옛 데이터의 time 등)을 기본값으로 채운 새 객체를 만들기
+// [순수 함수]
 function normalizeTodo(item) {
   return {
     id: item.id,
@@ -65,6 +80,7 @@ function normalizeTodo(item) {
 }
 
 // 저장된 목록을 읽어서 돌려주기 (무슨 일이 있어도 배열을 돌려줌)
+// [고차 함수 사용: filter, map] (저장소를 읽으므로 순수 함수는 아님)
 function loadTodos() {
   try {
     const saved = localStorage.getItem(STORAGE_KEY);
@@ -87,11 +103,13 @@ function loadTodos() {
 // 3-2. 데이터 함수 (화면을 건드리지 않는 순수 함수: 새 배열, 객체를 돌려줌)
 
 // id가 같은 항목 찾기 (없으면 undefined)
+// [순수 함수] [고차 함수 사용: find]
 function findTodo(list, id) {
   return list.find(todo => todo.id === id);
 }
 
 // 입력값으로 새 할 일 객체 만들기
+// (id에 현재 시간을 써서 같은 입력이라도 id가 달라지므로 완전한 순수 함수는 아님)
 function createTodo(fields) {
   return {
     id: Date.now(),   // 현재 시간(숫자)을 고유 id로 사용
@@ -104,31 +122,96 @@ function createTodo(fields) {
 }
 
 // 맨 뒤에 추가한 새 배열
+// [순수 함수]
 function addTodo(list, todo) {
   return [...list, todo];
 }
 
 // id가 같은 항목만 changes로 덮어쓴 새 배열
+// [순수 함수] [고차 함수 사용: map]
 function updateTodo(list, id, changes) {
   return list.map(todo => (todo.id === id ? { ...todo, ...changes } : todo));
 }
 
 // id가 같은 항목을 뺀 새 배열
+// [순수 함수] [고차 함수 사용: filter]
 function removeTodo(list, id) {
   return list.filter(todo => todo.id !== id);
 }
 
 // id가 같은 항목의 완료 여부를 뒤집은 새 배열
+// [순수 함수] [고차 함수 사용: map]
 function toggleTodo(list, id) {
   return list.map(todo => (todo.id === id ? { ...todo, done: !todo.done } : todo));
 }
 
 // 오늘 날짜를 "2026-11-15" 형식 글자로
+// (현재 시간을 읽으므로 순수 함수는 아님)
 function getToday() {
   const now = new Date();
   const month = String(now.getMonth() + 1).padStart(2, "0");   // 5 → "05"
   const day = String(now.getDate()).padStart(2, "0");
   return `${now.getFullYear()}-${month}-${day}`;
+}
+
+// 검색어가 제목이나 내용에 들어 있는지 (대소문자 무시, 검색어가 비면 전부 통과)
+// [순수 함수]
+function matchesSearch(todo, text) {
+  const keyword = text.trim().toLowerCase();
+  return keyword === ""
+    || todo.title.toLowerCase().includes(keyword)
+    || todo.content.toLowerCase().includes(keyword);
+}
+
+// 상태 필터: all(전체), active(진행 중), done(완료)
+// [순수 함수]
+function matchesFilter(todo, filter) {
+  if (filter === "active") {
+    return todo.done === false;
+  }
+  if (filter === "done") {
+    return todo.done === true;
+  }
+  return true;
+}
+
+// 날짜순 비교: 날짜(+시간)가 빠른 순, 날짜 없는 항목은 맨 뒤 (sort에 넘겨 쓰는 비교 함수)
+// [순수 함수]
+function compareByDate(a, b) {
+  if (a.date === "" && b.date === "") {
+    return 0;
+  }
+  if (a.date === "") {
+    return 1;
+  }
+  if (b.date === "") {
+    return -1;
+  }
+  return `${a.date} ${a.time}`.localeCompare(`${b.date} ${b.time}`);
+}
+
+// 화면에 보여줄 목록 = 필터 → 검색 → 정렬 (원본 list는 바뀌지 않음)
+// [순수 함수] [고차 함수 사용: filter, sort]
+function getVisibleTodos(list, view) {
+  const visible = list.filter(todo => matchesFilter(todo, view.filter) && matchesSearch(todo, view.search));
+  // sort는 배열을 그 자리에서 바꾸지만, filter가 이미 새 배열을 만들어 줘서 원본은 안전함
+  return view.sort === "date" ? visible.sort(compareByDate) : visible;   // 등록순은 추가한 순서 그대로
+}
+
+// 완료된 항목 개수
+// [순수 함수] [고차 함수 사용: reduce]
+function countDone(list) {
+  return list.reduce((count, todo) => count + (todo.done ? 1 : 0), 0);
+}
+
+// 개수 안내 글자 (예: "완료 1 / 전체 3 · 표시 1")
+// [순수 함수]
+function makeCountText(allTodos, visibleTodos) {
+  let text = `완료 ${countDone(allTodos)} / 전체 ${allTodos.length}`;
+  if (visibleTodos.length !== allTodos.length) {
+    text += ` · 표시 ${visibleTodos.length}`;   // 필터·검색으로 일부만 보일 때
+  }
+  return text;
 }
 
 // 3-3. 목록을 새 값으로 바꾸고, 저장하고, 화면을 다시 그리기 (세 단계를 한 번에)
@@ -139,14 +222,20 @@ function setTodos(nextTodos) {
 }
 
 // 4. 목록 화면에 그리기
+// [고차 함수 사용: map, forEach]
 function renderTodos() {
-  // 목록이 있으면 빈 안내 숨김, 비었으면 전체 삭제 버튼 숨김
-  emptyMsg.classList.toggle("hidden", todos.length > 0);
+  const visible = getVisibleTodos(todos, view);   // 지금 보여줄 항목만
+
+  // 빈 안내: 아예 없을 때와 조건에 맞는 게 없을 때 문구가 다름
+  emptyMsg.classList.toggle("hidden", visible.length > 0);
+  emptyMsg.textContent = todos.length === 0 ? "등록된 할 일이 없습니다." : "조건에 맞는 할 일이 없습니다.";
   clearArea.classList.toggle("hidden", todos.length === 0);
+  countText.textContent = makeCountText(todos, visible);
+  filterButtons.forEach(btn => btn.setAttribute("aria-pressed", String(btn.dataset.filter === view.filter)));
 
   const today = getToday();   // 오늘 날짜는 한 번만 계산해서 항목마다 넘겨줌
   const fragment = document.createDocumentFragment();   // 임시 상자
-  fragment.append(...todos.map(todo => makeItem(todo, today)));
+  fragment.append(...visible.map(todo => makeItem(todo, today)));
   todoList.replaceChildren(fragment);   // 기존 목록을 비우고 한 번에 붙이기
 }
 
@@ -240,11 +329,13 @@ function createActionButton(label, action, colorClass) {
 }
 
 // 날짜가 오늘보다 이전이면 true (완료한 항목이나 날짜가 없는 항목은 false)
+// [순수 함수] today를 넘겨주면 항상 같은 결과 (안 넘기면 getToday()로 현재 날짜를 읽음)
 function isOverdue(todo, today = getToday()) {
   return todo.done === false && todo.date !== "" && todo.date < today;
 }
 
 // 날짜와 시간을 보여줄 글자로 만들기 (예: "2026-10-02 10:30")
+// (올해인지 판단하려고 현재 시간을 읽으므로 순수 함수는 아님)
 function makeDateText(todo) {
   let text = "";
   if (todo.date) {
@@ -405,7 +496,7 @@ function confirmDelete() {
 
 // 전체 삭제 (확인창에서 '확인'을 눌렀을 때만)
 function clearAll() {
-  const ok = confirm("할 일을 모두 삭제할까요? 되돌릴 수 없습니다.");
+  const ok = confirm(`할 일 ${todos.length}개를 모두 삭제할까요? (필터와 상관없이 전체) 되돌릴 수 없습니다.`);
   if (ok === false) {
     return;
   }
@@ -438,6 +529,7 @@ function handleListClick(event) {
 }
 
 // 키보드: document 하나에서 모든 키 입력을 받음
+// [고차 함수 사용: forEach]
 function handleKeydown(event) {
   if (event.isComposing) {
     return;   // 한글 조합 중에는 무시 (Enter가 두 번 눌리는 것을 막기)
@@ -473,6 +565,40 @@ formCancelBtn.addEventListener("click", () => closePopup(formPopup));
 detailCloseBtn.addEventListener("click", () => closePopup(detailPopup));
 deleteOkBtn.addEventListener("click", confirmDelete);
 deleteCancelBtn.addEventListener("click", () => closePopup(deletePopup));
+
+// 마지막 호출 후 delay(ms) 동안 또 호출되지 않을 때만 fn을 한 번 실행 (키 입력마다 다시 그리는 낭비 방지)
+// [고차 함수] 함수를 받아서 새 함수를 돌려줌
+function debounce(fn, delay) {
+  let timer;
+  return (...args) => {
+    clearTimeout(timer);
+    timer = setTimeout(() => fn(...args), delay);
+  };
+}
+
+// 조회 조건 바꾸기: 검색어 / 상태 필터 / 정렬
+const handleSearchInput = debounce(() => {
+  view.search = searchInput.value;
+  renderTodos();
+}, 200);
+
+function handleFilterClick(event) {
+  const btn = event.target.closest("[data-filter]");
+  if (btn === null) {
+    return;
+  }
+  view.filter = btn.dataset.filter;
+  renderTodos();
+}
+
+function handleSortChange() {
+  view.sort = sortSelect.value;
+  renderTodos();
+}
+
+searchInput.addEventListener("input", handleSearchInput);
+filterGroup.addEventListener("click", handleFilterClick);   // 버튼 3개지만 위임으로 리스너 1개
+sortSelect.addEventListener("change", handleSortChange);
 
 // 9. 앱 시작
 todos = loadTodos();   // 이전: loadTodos();

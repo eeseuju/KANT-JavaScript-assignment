@@ -34,6 +34,30 @@
         class="material-symbols-outlined text-gray-500 hover:bg-green-50 hover:text-[#228B22] rounded-full p-1">edit_note</button>
     </div>
 
+    <!-- 조회: 검색 / 정렬 / 상태 필터 / 개수 -->
+    <div class="px-7 py-3 border-b border-gray-200">
+      <div class="flex items-center gap-2 mb-3">
+        <span class="material-symbols-outlined text-gray-500" aria-hidden="true">search</span>
+        <input id="search-input" type="search" aria-label="할 일 검색" placeholder="제목·내용 검색"
+          class="flex-1 py-1 text-sm outline-none">
+        <select id="sort-select" aria-label="정렬" class="text-xs text-gray-600 bg-gray-100 rounded px-2 py-1">
+          <option value="created">등록순</option>
+          <option value="date">날짜순</option>
+        </select>
+      </div>
+      <div class="flex items-center justify-between">
+        <div id="filter-group" role="group" aria-label="상태 필터" class="flex gap-1">
+          <button type="button" data-filter="all" aria-pressed="true"
+            class="px-3 py-1 text-xs rounded-full border border-gray-300 text-gray-600 aria-pressed:bg-[#228B22] aria-pressed:border-[#228B22] aria-pressed:text-white">전체</button>
+          <button type="button" data-filter="active" aria-pressed="false"
+            class="px-3 py-1 text-xs rounded-full border border-gray-300 text-gray-600 aria-pressed:bg-[#228B22] aria-pressed:border-[#228B22] aria-pressed:text-white">진행 중</button>
+          <button type="button" data-filter="done" aria-pressed="false"
+            class="px-3 py-1 text-xs rounded-full border border-gray-300 text-gray-600 aria-pressed:bg-[#228B22] aria-pressed:border-[#228B22] aria-pressed:text-white">완료</button>
+        </div>
+        <p id="count-text" class="text-xs text-gray-500" aria-live="polite"></p>
+      </div>
+    </div>
+
     <!-- 목록 -->
     <ul id="todo-list"></ul>
     <p id="empty-msg" class="text-center text-gray-500 text-sm py-16 hidden">등록된 할 일이 없습니다.</p>
