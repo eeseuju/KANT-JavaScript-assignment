@@ -131,116 +131,116 @@ function getToday() {
   return `${now.getFullYear()}-${month}-${day}`;
 }
 
-// 4. 목록 화면에 그리기
-function renderTodos() {
-  todoList.innerHTML = "";   // 기존 목록 비우기
-
-  if (todos.length === 0) {
-    emptyMsg.classList.remove("hidden");
-    clearArea.classList.add("hidden");   // 지울 게 없으면 전체 삭제 버튼 숨김
-  } else {
-    emptyMsg.classList.add("hidden");
-    clearArea.classList.remove("hidden");
-  }
-
-  for (let i = 0; i < todos.length; i++) {
-    todoList.appendChild(makeItem(todos[i]));
-  }
+// 3-3. 목록을 새 값으로 바꾸고, 저장하고, 화면을 다시 그리기 (세 단계를 한 번에)
+function setTodos(nextTodos) {
+  todos = nextTodos;
+  saveTodos();
+  renderTodos();
 }
 
-// 할 일 하나를 li 요소로 만들기
-function makeItem(todo) {
+// 4. 목록 화면에 그리기
+function renderTodos() {
+  // 목록이 있으면 빈 안내 숨김, 비었으면 전체 삭제 버튼 숨김
+  emptyMsg.classList.toggle("hidden", todos.length > 0);
+  clearArea.classList.toggle("hidden", todos.length === 0);
+
+  const today = getToday();   // 오늘 날짜는 한 번만 계산해서 항목마다 넘겨줌
+  const fragment = document.createDocumentFragment();   // 임시 상자
+  fragment.append(...todos.map(todo => makeItem(todo, today)));
+  todoList.replaceChildren(fragment);   // 기존 목록을 비우고 한 번에 붙이기
+}
+
+// 할 일 하나를 li 요소로 만들기 (아래 작은 부품 함수들을 조립)
+function makeItem(todo, today) {
   const li = document.createElement("li");
   li.className = "flex items-center justify-between px-[30px] py-3 border-b border-gray-200 hover:bg-gray-50";
-
-  // 완료 체크 버튼 (동그라미)
-  const checkBtn = document.createElement("button");
-  checkBtn.className = "w-5 h-5 mt-0.5 shrink-0 rounded-full border-2 text-xs leading-none flex items-center justify-center";
-  if (todo.done === true) {
-    checkBtn.className += " bg-[#228B22] border-[#228B22] text-white";
-    checkBtn.className += " material-symbols-outlined !text-sm";   // 머테리얼 아이콘 (!text-sm: 아이콘 크기를 14px로 강제)
-    checkBtn.textContent = "check";   // 아이콘 이름
-    checkBtn.title = "미완료로 표시";   // 마우스를 올리면 뜨는 말풍선
-  } else {
-    checkBtn.className += " border-gray-400";
-    checkBtn.title = "완료로 표시";
-  }
-  checkBtn.addEventListener("click", function () {
-    toggleDone(todo.id);
-  });
-
-  // 제목 + 날짜 (누르면 상세 팝업)
-  const info = document.createElement("div");
-  info.className = "cursor-pointer";
-  info.addEventListener("click", function () {
-    openDetailPopup(todo);
-  });
-
-  const title = document.createElement("p");
-  title.className = "text-sm";
-  if (todo.done === true) {
-    title.className = "text-sm text-gray-400 line-through";   // 완료되면 취소선
-  }
-  title.textContent = todo.title;
-
-  // 날짜/시간 라벨
-  const date = document.createElement("span");
-  date.className = "inline-flex items-center gap-1 mt-2 px-2 py-1 text-xs border rounded-full";
-  if (isOverdue(todo)) {
-    date.className += " border-[#ffa500] text-[#ffa500]";   // 지난 날짜는 주황색으로
-  } else {
-    date.className += " border-gray-300 text-gray-500";
-  }
-
-  // 라벨 안에 시계 아이콘 + 날짜 글자 (아이콘은 항상 표시)
-  const dateIcon = document.createElement("span");
-  dateIcon.className = "material-symbols-outlined !text-[11.5px] relative top-px";
-  dateIcon.textContent = "schedule";
-
-  const dateText = document.createElement("span");
-  dateText.textContent = makeDateText(todo);
-
-  date.appendChild(dateIcon);
-  date.appendChild(dateText);
-
-  info.appendChild(title);
-  info.appendChild(date);
-
-  // 수정, 삭제 버튼
-  const buttons = document.createElement("div");
-  buttons.className = "flex gap-2 self-end";
-
-  const editBtn = document.createElement("button");
-  editBtn.textContent = "수정";
-  editBtn.className = "text-xs py-0.5 border border-transparent text-[#228B22] hover:font-bold";
-  editBtn.addEventListener("click", function () {
-    openEditPopup(todo.id);
-  });
-
-  const delBtn = document.createElement("button");
-  delBtn.textContent = "삭제";
-  delBtn.className = "text-xs py-0.5 border border-transparent text-[#f87171] hover:font-bold";
-  delBtn.addEventListener("click", function () {
-    openDeletePopup(todo.id);
-  });
-
-  buttons.appendChild(editBtn);
-  buttons.appendChild(delBtn);
 
   // 왼쪽(체크 + 제목/날짜), 오른쪽(수정/삭제)
   const left = document.createElement("div");
   left.className = "flex items-start gap-3";
-  left.appendChild(checkBtn);
-  left.appendChild(info);
+  left.append(makeCheckButton(todo), makeInfo(todo, today));
 
-  li.appendChild(left);
-  li.appendChild(buttons);
+  li.append(left, makeButtons(todo));
   return li;
 }
 
+// 완료 체크 버튼 (동그라미)
+function makeCheckButton(todo) {
+  const btn = document.createElement("button");
+  btn.className = "w-5 h-5 mt-0.5 shrink-0 rounded-full border-2 text-xs leading-none flex items-center justify-center";
+  if (todo.done) {
+    // 머테리얼 아이콘 (!text-sm: 아이콘 크기를 14px로 강제)
+    btn.className += " bg-[#228B22] border-[#228B22] text-white material-symbols-outlined !text-sm";
+    btn.textContent = "check";   // 아이콘 이름
+    btn.title = "미완료로 표시";   // 마우스를 올리면 뜨는 말풍선
+  } else {
+    btn.className += " border-gray-400";
+    btn.title = "완료로 표시";
+  }
+  btn.addEventListener("click", () => toggleDone(todo.id));
+  return btn;
+}
+
+// 제목 + 날짜 (누르면 상세 팝업)
+function makeInfo(todo, today) {
+  const info = document.createElement("div");
+  info.className = "cursor-pointer";
+  info.addEventListener("click", () => openDetailPopup(todo));
+  info.append(makeTitle(todo), makeDateLabel(todo, today));
+  return info;
+}
+
+// 제목 (완료되면 취소선)
+function makeTitle(todo) {
+  const title = document.createElement("p");
+  title.className = todo.done ? "text-sm text-gray-400 line-through" : "text-sm";
+  title.textContent = todo.title;
+  return title;
+}
+
+// 날짜/시간 라벨 (지난 날짜는 주황색)
+function makeDateLabel(todo, today) {
+  const label = document.createElement("span");
+  const color = isOverdue(todo, today)
+    ? "border-[#ffa500] text-[#ffa500]"
+    : "border-gray-300 text-gray-500";
+  label.className = `inline-flex items-center gap-1 mt-2 px-2 py-1 text-xs border rounded-full ${color}`;
+
+  // 라벨 안에 시계 아이콘 + 날짜 글자 (아이콘은 항상 표시)
+  const icon = document.createElement("span");
+  icon.className = "material-symbols-outlined !text-[11.5px] relative top-px";
+  icon.textContent = "schedule";
+
+  const text = document.createElement("span");
+  text.textContent = makeDateText(todo);
+
+  label.append(icon, text);
+  return label;
+}
+
+// 수정, 삭제 버튼 묶음
+function makeButtons(todo) {
+  const box = document.createElement("div");
+  box.className = "flex gap-2 self-end";
+  box.append(
+    createActionButton("수정", "text-[#228B22]", () => openEditPopup(todo.id)),
+    createActionButton("삭제", "text-[#f87171]", () => openDeletePopup(todo.id))
+  );
+  return box;
+}
+
+// 글자만 있는 작은 버튼 하나 만들기 (이름, 글자 색 클래스, 눌렀을 때 할 일)
+function createActionButton(label, colorClass, onClick) {
+  const btn = document.createElement("button");
+  btn.textContent = label;
+  btn.className = `text-xs py-0.5 border border-transparent hover:font-bold ${colorClass}`;
+  btn.addEventListener("click", onClick);
+  return btn;
+}
+
 // 날짜가 오늘보다 이전이면 true (완료한 항목이나 날짜가 없는 항목은 false)
-function isOverdue(todo) {
-  return todo.done === false && todo.date !== "" && todo.date < getToday();
+function isOverdue(todo, today = getToday()) {
+  return todo.done === false && todo.date !== "" && todo.date < today;
 }
 
 // 날짜와 시간을 보여줄 글자로 만들기 (예: "2026-10-02 10:30")
@@ -275,13 +275,11 @@ function toggleDone(id) {
     return;   // 못 찾으면 아무것도 안 함
   }
 
-  todos = toggleTodo(todos, id);
+  setTodos(toggleTodo(todos, id));
 
   if (target.done === false) {
     showThumb();   // 미완료였다가 완료로 바뀔 때만 따봉 보여주기
   }
-  saveTodos();
-  renderTodos();
 }
 
 // 따봉을 보여주고 1초 뒤에 숨기기
@@ -320,23 +318,27 @@ function quickAdd() {
     return;   // 비어 있으면 아무것도 안 함
   }
 
-  todos = addTodo(todos, createTodo({ title: title }));
-
+  setTodos(addTodo(todos, createTodo({ title: title })));
   mainInput.value = "";
-  saveTodos();
-  renderTodos();
+}
+
+// 추가/수정 팝업 열기: todo의 값을 입력칸에 채움 (id가 있으면 수정, 없으면 추가)
+const EMPTY_FORM = { title: "", content: "", date: "", time: "" };
+
+function openFormPopup(todo, id = null) {
+  editingId = id;
+  titleInput.value = todo.title;
+  contentInput.value = todo.content;
+  dateInput.value = todo.date;
+  timeInput.value = todo.time;   // 불러올 때 normalizeTodo가 빈 글자("")를 채워 줌
+  errorMsg.textContent = "";
+  formPopup.classList.remove("hidden");
+  titleInput.focus();   // 바로 제목을 입력할 수 있게
 }
 
 // 상세 설정: 메인 입력값을 제목으로 옮겨서 팝업 열기
 function openAddPopup() {
-  editingId = null;
-  dateInput.value = "";
-  timeInput.value = "";
-  titleInput.value = mainInput.value;
-  contentInput.value = "";
-  errorMsg.textContent = "";
-  formPopup.classList.remove("hidden");
-  titleInput.focus();   // 바로 제목을 입력할 수 있게
+  openFormPopup({ ...EMPTY_FORM, title: mainInput.value });
 }
 
 function openEditPopup(id) {
@@ -344,15 +346,7 @@ function openEditPopup(id) {
   if (todo === undefined) {
     return;   // 못 찾으면 팝업을 열지 않음
   }
-
-  editingId = id;
-  dateInput.value = todo.date;
-  timeInput.value = todo.time;   // 불러올 때 normalizeTodo가 빈 글자("")를 채워 줌
-  titleInput.value = todo.title;
-  contentInput.value = todo.content;
-  errorMsg.textContent = "";
-  formPopup.classList.remove("hidden");
-  titleInput.focus();
+  openFormPopup(todo, id);
 }
 
 function closeFormPopup() {
@@ -376,14 +370,12 @@ function submitForm() {
   };
 
   if (editingId === null) {
-    todos = addTodo(todos, createTodo(fields));   // 새로 추가
+    setTodos(addTodo(todos, createTodo(fields)));   // 새로 추가
     mainInput.value = "";   // 메인 입력창 비우기
   } else {
-    todos = updateTodo(todos, editingId, fields);   // 선택한 항목만 수정
+    setTodos(updateTodo(todos, editingId, fields));   // 선택한 항목만 수정
   }
 
-  saveTodos();
-  renderTodos();
   closeFormPopup();
 }
 
@@ -404,10 +396,7 @@ function closeDeletePopup() {
 }
 
 function confirmDelete() {
-  todos = removeTodo(todos, deletingId);
-
-  saveTodos();
-  renderTodos();
+  setTodos(removeTodo(todos, deletingId));
   closeDeletePopup();
 }
 
@@ -418,9 +407,7 @@ function clearAll() {
     return;
   }
 
-  todos = [];
-  localStorage.removeItem(STORAGE_KEY);   // 저장된 데이터도 지우기
-  renderTodos();
+  setTodos([]);
 }
 
 // 8. 버튼에 기능 연결
