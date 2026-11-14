@@ -153,6 +153,7 @@ function renderTodos() {
 // 할 일 하나를 li 요소로 만들기 (아래 작은 부품 함수들을 조립)
 function makeItem(todo, today) {
   const li = document.createElement("li");
+  li.dataset.id = todo.id;   // 위임 처리에서 "어느 항목인지" 알아내는 용도
   li.className = "flex items-center justify-between px-[30px] py-3 border-b border-gray-200 hover:bg-gray-50";
 
   // 왼쪽(체크 + 제목/날짜), 오른쪽(수정/삭제)
@@ -167,6 +168,7 @@ function makeItem(todo, today) {
 // 완료 체크 버튼 (동그라미)
 function makeCheckButton(todo) {
   const btn = document.createElement("button");
+  btn.dataset.action = "toggle";   // 누르면 무슨 일을 할지 (처리는 handleListClick)
   btn.className = "w-5 h-5 mt-0.5 shrink-0 rounded-full border-2 text-xs leading-none flex items-center justify-center";
   if (todo.done) {
     // 머테리얼 아이콘 (!text-sm: 아이콘 크기를 14px로 강제)
@@ -177,15 +179,14 @@ function makeCheckButton(todo) {
     btn.className += " border-gray-400";
     btn.title = "완료로 표시";
   }
-  btn.addEventListener("click", () => toggleDone(todo.id));
   return btn;
 }
 
 // 제목 + 날짜 (누르면 상세 팝업)
 function makeInfo(todo, today) {
   const info = document.createElement("div");
+  info.dataset.action = "detail";
   info.className = "cursor-pointer";
-  info.addEventListener("click", () => openDetailPopup(todo));
   info.append(makeTitle(todo), makeDateLabel(todo, today));
   return info;
 }
@@ -223,18 +224,18 @@ function makeButtons(todo) {
   const box = document.createElement("div");
   box.className = "flex gap-2 self-end";
   box.append(
-    createActionButton("수정", "text-[#228B22]", () => openEditPopup(todo.id)),
-    createActionButton("삭제", "text-[#f87171]", () => openDeletePopup(todo.id))
+    createActionButton("수정", "edit", "text-[#228B22]"),
+    createActionButton("삭제", "delete", "text-[#f87171]")
   );
   return box;
 }
 
-// 글자만 있는 작은 버튼 하나 만들기 (이름, 글자 색 클래스, 눌렀을 때 할 일)
-function createActionButton(label, colorClass, onClick) {
+// 글자만 있는 작은 버튼 하나 만들기 (이름, 동작 이름, 글자 색 클래스)
+function createActionButton(label, action, colorClass) {
   const btn = document.createElement("button");
   btn.textContent = label;
+  btn.dataset.action = action;
   btn.className = `text-xs py-0.5 border border-transparent hover:font-bold ${colorClass}`;
-  btn.addEventListener("click", onClick);
   return btn;
 }
 
@@ -290,8 +291,22 @@ function showThumb() {
   }, 1000);   // 1000 = 1초
 }
 
-// 5. 상세 보기 팝업
-function openDetailPopup(todo) {
+// 5-1. 팝업 열기/닫기 (모든 팝업이 같이 씀)
+function openPopup(popup) {
+  popup.classList.remove("hidden");
+}
+
+function closePopup(popup) {
+  popup.classList.add("hidden");
+}
+
+// 5-2. 상세 보기 팝업
+function openDetailPopup(id) {
+  const todo = findTodo(todos, id);
+  if (todo === undefined) {
+    return;   // 못 찾으면 팝업을 열지 않음
+  }
+
   detailTitle.textContent = todo.title;
 
   detailDate.textContent = makeDateText(todo);
@@ -302,11 +317,7 @@ function openDetailPopup(todo) {
     detailContent.textContent = todo.content;
   }
 
-  detailPopup.classList.remove("hidden");
-}
-
-function closeDetailPopup() {
-  detailPopup.classList.add("hidden");
+  openPopup(detailPopup);
 }
 
 // 6. 추가 / 수정 팝업
@@ -332,7 +343,7 @@ function openFormPopup(todo, id = null) {
   dateInput.value = todo.date;
   timeInput.value = todo.time;   // 불러올 때 normalizeTodo가 빈 글자("")를 채워 줌
   errorMsg.textContent = "";
-  formPopup.classList.remove("hidden");
+  openPopup(formPopup);
   titleInput.focus();   // 바로 제목을 입력할 수 있게
 }
 
@@ -347,10 +358,6 @@ function openEditPopup(id) {
     return;   // 못 찾으면 팝업을 열지 않음
   }
   openFormPopup(todo, id);
-}
-
-function closeFormPopup() {
-  formPopup.classList.add("hidden");
 }
 
 // '저장' 버튼 (추가일 때와 수정일 때 모두)
@@ -376,7 +383,7 @@ function submitForm() {
     setTodos(updateTodo(todos, editingId, fields));   // 선택한 항목만 수정
   }
 
-  closeFormPopup();
+  closePopup(formPopup);
 }
 
 // 7. 삭제 팝업
@@ -388,16 +395,12 @@ function openDeletePopup(id) {
 
   deletingId = id;
   deleteTitle.textContent = todo.title;
-  deletePopup.classList.remove("hidden");
-}
-
-function closeDeletePopup() {
-  deletePopup.classList.add("hidden");
+  openPopup(deletePopup);
 }
 
 function confirmDelete() {
   setTodos(removeTodo(todos, deletingId));
-  closeDeletePopup();
+  closePopup(deletePopup);
 }
 
 // 전체 삭제 (확인창에서 '확인'을 눌렀을 때만)
@@ -410,20 +413,66 @@ function clearAll() {
   setTodos([]);
 }
 
-// 8. 버튼에 기능 연결
-clearBtn.addEventListener("click", clearAll);
-mainInput.addEventListener("keydown", function (event) {
-  // isComposing: 한글 조합 중일 때 Enter가 두 번 눌리는 것을 막기
-  if (event.key === "Enter" && event.isComposing === false) {
-    quickAdd();
+// 8. 이벤트 연결
+
+// 동작 이름 → 실행할 함수 (모두 id를 받음)
+const LIST_ACTIONS = {
+  toggle: toggleDone,
+  detail: openDetailPopup,
+  edit: openEditPopup,
+  delete: openDeletePopup
+};
+
+// 목록 클릭: 목록(ul) 하나에만 리스너를 달고, 눌린 곳의 data-action으로 무슨 일인지 구분 (이벤트 위임)
+function handleListClick(event) {
+  const actionEl = event.target.closest("[data-action]");   // 눌린 곳(또는 부모) 중 data-action이 있는 요소
+  if (actionEl === null) {
+    return;   // 동작이 없는 곳을 누름
   }
-});
+
+  const id = Number(actionEl.closest("li").dataset.id);   // data는 글자라서 숫자로 바꿈
+  const action = LIST_ACTIONS[actionEl.dataset.action];
+  if (action !== undefined) {
+    action(id);
+  }
+}
+
+// 키보드: document 하나에서 모든 키 입력을 받음
+function handleKeydown(event) {
+  if (event.isComposing) {
+    return;   // 한글 조합 중에는 무시 (Enter가 두 번 눌리는 것을 막기)
+  }
+
+  if (event.key === "Escape") {
+    // 열려 있는 팝업을 모두 닫기
+    document.querySelectorAll(".popup:not(.hidden)").forEach(popup => closePopup(popup));
+  } else if (event.key === "Enter" && event.target === mainInput) {
+    quickAdd();
+  } else if (event.key === "Enter" && event.target === titleInput) {
+    submitForm();
+  }
+}
+
+// 팝업의 어두운 배경(.popup 자체)을 누르면 닫기
+// (click이 아니라 mousedown: 입력창에서 드래그하다 배경에서 놓아도 닫히지 않게)
+function handleBackdropMousedown(event) {
+  if (event.target.classList.contains("popup")) {
+    closePopup(event.target);
+  }
+}
+
+todoList.addEventListener("click", handleListClick);
+document.addEventListener("keydown", handleKeydown);
+document.addEventListener("mousedown", handleBackdropMousedown);
+
+// 하나뿐인 정적 버튼은 위임 없이 직접 연결
+clearBtn.addEventListener("click", clearAll);
 openFormBtn.addEventListener("click", openAddPopup);
 formOkBtn.addEventListener("click", submitForm);
-formCancelBtn.addEventListener("click", closeFormPopup);
-detailCloseBtn.addEventListener("click", closeDetailPopup);
+formCancelBtn.addEventListener("click", () => closePopup(formPopup));
+detailCloseBtn.addEventListener("click", () => closePopup(detailPopup));
 deleteOkBtn.addEventListener("click", confirmDelete);
-deleteCancelBtn.addEventListener("click", closeDeletePopup);
+deleteCancelBtn.addEventListener("click", () => closePopup(deletePopup));
 
 // 9. 앱 시작
 todos = loadTodos();   // 이전: loadTodos();

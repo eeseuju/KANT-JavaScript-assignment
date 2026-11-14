@@ -199,7 +199,7 @@ html
 | 중복 | 위치 | 남긴 이유 |
 | --- | --- | --- |
 | `list.map(todo => id가 같으면 바꾸고 아니면 그대로)` 모양 | `js/todo.js`의 `updateTodo`, `toggleTodo` | 둘을 한 함수로 합칠 수는 있지만, 호출하는 쪽이 무슨 일을 하는지 오히려 알아보기 어려워져서 따로 두었습니다. |
-| `findTodo`로 찾고 없으면 `return` 하는 3줄 | `js/todo.js`의 `openEditPopup`, `openDeletePopup` | 3줄이라 함수로 빼는 것보다 그 자리에서 바로 읽히는 편이 낫다고 판단했습니다. |
+| `findTodo`로 찾고 없으면 `return` 하는 3줄 | `js/todo.js`의 `openDetailPopup`, `openEditPopup`, `openDeletePopup` | 3줄이라 함수로 빼는 것보다 그 자리에서 바로 읽히는 편이 낫다고 판단했습니다. |
 | `STORAGE_KEY = "todo-list"` 상수 | `js/todo.js`, `js/debug.js` | `debug.html`이 `todo.js`를 불러오면 Todo 앱이 같이 실행되기 때문에 공유할 수 없습니다. 두 값은 반드시 같아야 합니다. |
 
 <br>
