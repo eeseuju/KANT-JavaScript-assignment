@@ -1,10 +1,10 @@
-// ===== 1. 데이터 =====
-const STORAGE_KEY = "todo-list";   // localStorage에 저장할 이름(키)
+// 1. 데이터
+const STORAGE_KEY = "todo-list";       // localStorage에 저장할 이름(키)
 let todos = [];                        // 할 일 목록 (id, date, time, title, content, done)
 let editingId = null;                  // 수정 중인 항목의 id (추가 중이면 null)
 let deletingId = null;                 // 삭제하려는 항목의 id
 
-// ===== 2. HTML 요소 가져오기 =====
+// 2. HTML 요소 가져오기
 const mainInput = document.getElementById("main-input");
 const openFormBtn = document.getElementById("open-form-btn");
 const todoList = document.getElementById("todo-list");
@@ -33,20 +33,58 @@ const deleteTitle = document.getElementById("delete-title");
 const deleteOkBtn = document.getElementById("delete-ok-btn");
 const deleteCancelBtn = document.getElementById("delete-cancel-btn");
 
-// ===== 3. 저장 / 불러오기 =====
+// 3. 저장 / 불러오기
 function saveTodos() {
-  // 배열은 그대로 저장이 안 되므로 문자열로 바꿔서 저장
-  localStorage.setItem(STORAGE_KEY, JSON.stringify(todos));
-}
-
-function loadTodos() {
-  const saved = localStorage.getItem(STORAGE_KEY);
-  if (saved !== null) {
-    todos = JSON.parse(saved);   // 문자열을 다시 배열로
+  try {
+    // 배열은 그대로 저장이 안 되므로 문자열로 바꿔서 저장
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(todos));
+  } catch (error) {
+    console.error("저장 실패:", error);
+    alert("저장하지 못했습니다. 브라우저 저장 공간을 확인해 주세요.");
   }
 }
 
-// ===== 4. 목록 화면에 그리기 =====
+// 항목 하나가 쓸 수 있는 모양인지 검사 (id는 숫자, title은 문자열이어야 함)
+function isValidTodo(item) {
+  return item !== null
+    && typeof item === "object"
+    && typeof item.id === "number"
+    && typeof item.title === "string";
+}
+
+// 빠진 칸(옛 데이터의 time 등)을 기본값으로 채운 새 객체를 만들기
+function normalizeTodo(item) {
+  return {
+    id: item.id,
+    title: item.title,
+    content: typeof item.content === "string" ? item.content : "",
+    date: typeof item.date === "string" ? item.date : "",
+    time: typeof item.time === "string" ? item.time : "",
+    done: item.done === true
+  };
+}
+
+// 저장된 목록을 읽어서 돌려주기 (무슨 일이 있어도 배열을 돌려줌)
+function loadTodos() {
+  try {
+    const saved = localStorage.getItem(STORAGE_KEY);
+    if (saved === null) {
+      return [];   // 저장된 게 없으면 빈 목록
+    }
+
+    const parsed = JSON.parse(saved);   // 깨진 글자면 여기서 에러 → catch로
+    if (Array.isArray(parsed) === false) {
+      return [];   // 배열이 아니면 쓸 수 없음
+    }
+
+    return parsed.filter(isValidTodo).map(normalizeTodo);
+  } catch (error) {
+    console.error("저장된 데이터를 읽지 못했습니다:", error);
+    return [];
+  }
+}
+
+// 4. 목록 화면에 그리기
 function renderTodos() {
   todoList.innerHTML = "";   // 기존 목록 비우기
 
@@ -223,7 +261,7 @@ function showThumb() {
   }, 1000);   // 1000 = 1초
 }
 
-// ===== 상세 보기 팝업 =====
+// 5. 상세 보기 팝업
 function openDetailPopup(todo) {
   detailTitle.textContent = todo.title;
 
@@ -242,7 +280,7 @@ function closeDetailPopup() {
   detailPopup.classList.add("hidden");
 }
 
-// ===== 5. 추가 / 수정 팝업 =====
+// 6. 추가 / 수정 팝업
 
 // 빠른 추가: 제목만 넣고 바로 등록 (날짜, 시간, 내용은 비워둠)
 function quickAdd() {
@@ -342,7 +380,7 @@ function submitForm() {
   closeFormPopup();
 }
 
-// ===== 6. 삭제 팝업 =====
+// 7. 삭제 팝업
 function openDeletePopup(id) {
   deletingId = id;
   for (let i = 0; i < todos.length; i++) {
@@ -383,7 +421,7 @@ function clearAll() {
   renderTodos();
 }
 
-// ===== 7. 버튼에 기능 연결 =====
+// 8. 버튼에 기능 연결
 clearBtn.addEventListener("click", clearAll);
 mainInput.addEventListener("keydown", function (event) {
   // isComposing: 한글 조합 중일 때 Enter가 두 번 눌리는 것을 막기
@@ -398,6 +436,6 @@ detailCloseBtn.addEventListener("click", closeDetailPopup);
 deleteOkBtn.addEventListener("click", confirmDelete);
 deleteCancelBtn.addEventListener("click", closeDeletePopup);
 
-// ===== 8. 앱 시작 =====
-loadTodos();
+// 9. 앱 시작
+todos = loadTodos();   // 이전: loadTodos();
 renderTodos();
