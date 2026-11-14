@@ -33,7 +33,7 @@ const deleteTitle = document.getElementById("delete-title");
 const deleteOkBtn = document.getElementById("delete-ok-btn");
 const deleteCancelBtn = document.getElementById("delete-cancel-btn");
 
-// 3. 저장 / 불러오기
+// 3-1. 저장 / 불러오기
 function saveTodos() {
   try {
     // 배열은 그대로 저장이 안 되므로 문자열로 바꿔서 저장
@@ -82,6 +82,53 @@ function loadTodos() {
     console.error("저장된 데이터를 읽지 못했습니다:", error);
     return [];
   }
+}
+
+// 3-2. 데이터 함수 (화면을 건드리지 않는 순수 함수: 새 배열, 객체를 돌려줌)
+
+// id가 같은 항목 찾기 (없으면 undefined)
+function findTodo(list, id) {
+  return list.find(todo => todo.id === id);
+}
+
+// 입력값으로 새 할 일 객체 만들기
+function createTodo(fields) {
+  return {
+    id: Date.now(),   // 현재 시간(숫자)을 고유 id로 사용
+    title: fields.title,
+    content: fields.content || "",
+    date: fields.date || "",
+    time: fields.time || "",
+    done: false
+  };
+}
+
+// 맨 뒤에 추가한 새 배열
+function addTodo(list, todo) {
+  return [...list, todo];
+}
+
+// id가 같은 항목만 changes로 덮어쓴 새 배열
+function updateTodo(list, id, changes) {
+  return list.map(todo => (todo.id === id ? { ...todo, ...changes } : todo));
+}
+
+// id가 같은 항목을 뺀 새 배열
+function removeTodo(list, id) {
+  return list.filter(todo => todo.id !== id);
+}
+
+// id가 같은 항목의 완료 여부를 뒤집은 새 배열
+function toggleTodo(list, id) {
+  return list.map(todo => (todo.id === id ? { ...todo, done: !todo.done } : todo));
+}
+
+// 오늘 날짜를 "2026-11-15" 형식 글자로
+function getToday() {
+  const now = new Date();
+  const month = String(now.getMonth() + 1).padStart(2, "0");   // 5 → "05"
+  const day = String(now.getDate()).padStart(2, "0");
+  return `${now.getFullYear()}-${month}-${day}`;
 }
 
 // 4. 목록 화면에 그리기
@@ -193,24 +240,7 @@ function makeItem(todo) {
 
 // 날짜가 오늘보다 이전이면 true (완료한 항목이나 날짜가 없는 항목은 false)
 function isOverdue(todo) {
-  if (todo.done === true || !todo.date) {
-    return false;
-  }
-
-  // 오늘 날짜를 "2026-10-02" 형식의 글자로 만들어 비교
-  const now = new Date();
-  let month = now.getMonth() + 1;   // getMonth()는 0부터 시작해서 +1
-  let day = now.getDate();
-  if (month < 10) {
-    month = "0" + month;
-  }
-  if (day < 10) {
-    day = "0" + day;
-  }
-  const today = now.getFullYear() + "-" + month + "-" + day;
-
-  // 같은 형식의 글자끼리는 크기 비교로 날짜 앞뒤를 알 수 있음
-  return todo.date < today;
+  return todo.done === false && todo.date !== "" && todo.date < getToday();
 }
 
 // 날짜와 시간을 보여줄 글자로 만들기 (예: "2026-10-02 10:30")
@@ -240,14 +270,15 @@ function makeDateText(todo) {
 
 // 완료 체크 바꾸기
 function toggleDone(id) {
-  for (let i = 0; i < todos.length; i++) {
-    if (todos[i].id === id) {
-      todos[i].done = !(todos[i].done === true);   // true면 false로, 아니면 true로
+  const target = findTodo(todos, id);
+  if (target === undefined) {
+    return;   // 못 찾으면 아무것도 안 함
+  }
 
-      if (todos[i].done === true) {
-        showThumb();   // 완료로 바뀔 때만 따봉 보여주기
-      }
-    }
+  todos = toggleTodo(todos, id);
+
+  if (target.done === false) {
+    showThumb();   // 미완료였다가 완료로 바뀔 때만 따봉 보여주기
   }
   saveTodos();
   renderTodos();
@@ -289,14 +320,7 @@ function quickAdd() {
     return;   // 비어 있으면 아무것도 안 함
   }
 
-  todos.push({
-    id: Date.now(),
-    date: "",
-    time: "",
-    title: title,
-    content: "",
-    done: false
-  });
+  todos = addTodo(todos, createTodo({ title: title }));
 
   mainInput.value = "";
   saveTodos();
@@ -316,21 +340,14 @@ function openAddPopup() {
 }
 
 function openEditPopup(id) {
-  // id가 같은 항목 찾기 (찾으면 값이 바뀌므로 let)
-  let todo = null;
-  for (let i = 0; i < todos.length; i++) {
-    if (todos[i].id === id) {
-      todo = todos[i];
-    }
+  const todo = findTodo(todos, id);
+  if (todo === undefined) {
+    return;   // 못 찾으면 팝업을 열지 않음
   }
 
   editingId = id;
   dateInput.value = todo.date;
-  if (todo.time) {
-    timeInput.value = todo.time;
-  } else {
-    timeInput.value = "";   // 이전에 저장한 데이터는 time이 없음
-  }
+  timeInput.value = todo.time;   // 불러올 때 normalizeTodo가 빈 글자("")를 채워 줌
   titleInput.value = todo.title;
   contentInput.value = todo.content;
   errorMsg.textContent = "";
@@ -351,28 +368,18 @@ function submitForm() {
     return;   // 팝업은 그대로 두고 끝
   }
 
+  const fields = {
+    title: title,
+    content: contentInput.value,
+    date: dateInput.value,
+    time: timeInput.value
+  };
+
   if (editingId === null) {
-    // 새로 추가
-    const newTodo = {
-      id: Date.now(),   // 현재 시간(숫자)을 고유 id로 사용
-      date: dateInput.value,
-      time: timeInput.value,
-      title: title,
-      content: contentInput.value,
-      done: false   // 완료 여부
-    };
-    todos.push(newTodo);
+    todos = addTodo(todos, createTodo(fields));   // 새로 추가
     mainInput.value = "";   // 메인 입력창 비우기
   } else {
-    // 선택한 항목만 수정
-    for (let i = 0; i < todos.length; i++) {
-      if (todos[i].id === editingId) {
-        todos[i].date = dateInput.value;
-        todos[i].time = timeInput.value;
-        todos[i].title = title;
-        todos[i].content = contentInput.value;
-      }
-    }
+    todos = updateTodo(todos, editingId, fields);   // 선택한 항목만 수정
   }
 
   saveTodos();
@@ -382,12 +389,13 @@ function submitForm() {
 
 // 7. 삭제 팝업
 function openDeletePopup(id) {
-  deletingId = id;
-  for (let i = 0; i < todos.length; i++) {
-    if (todos[i].id === id) {
-      deleteTitle.textContent = todos[i].title;
-    }
+  const todo = findTodo(todos, id);
+  if (todo === undefined) {
+    return;   // 못 찾으면 팝업을 열지 않음
   }
+
+  deletingId = id;
+  deleteTitle.textContent = todo.title;
   deletePopup.classList.remove("hidden");
 }
 
@@ -396,13 +404,7 @@ function closeDeletePopup() {
 }
 
 function confirmDelete() {
-  const newTodos = [];   // push로 내용만 추가하고 변수 자체는 안 바뀌므로 const
-  for (let i = 0; i < todos.length; i++) {
-    if (todos[i].id !== deletingId) {   // 삭제할 항목만 빼고 담기
-      newTodos.push(todos[i]);
-    }
-  }
-  todos = newTodos;
+  todos = removeTodo(todos, deletingId);
 
   saveTodos();
   renderTodos();
