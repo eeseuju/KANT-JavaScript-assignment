@@ -6,6 +6,9 @@
 
 // 1. 데이터
 const STORAGE_KEY = "todo-list";       // localStorage에 저장할 이름(키)
+const TITLE_MAX_LENGTH = 50;           // 제목 최대 글자 수
+const DATE_PATTERN = /^\d{4}-\d{2}-\d{2}$/;   // 저장된 날짜 모양 (예: 2026-11-15)
+const TIME_PATTERN = /^\d{2}:\d{2}$/;         // 저장된 시간 모양 (예: 09:30)
 let todos = [];                        // 할 일 목록 (id, date, time, title, content, done)
 let editingId = null;                  // 수정 중인 항목의 id (추가 중이면 null)
 let deletingId = null;                 // 삭제하려는 항목의 id
@@ -46,6 +49,9 @@ const filterGroup = document.getElementById("filter-group");
 const filterButtons = filterGroup.querySelectorAll("button");
 const countText = document.getElementById("count-text");
 
+mainInput.maxLength = TITLE_MAX_LENGTH;    // 50자 넘게 못 치게 (숫자는 위 상수 한 곳에서만 정함)
+titleInput.maxLength = TITLE_MAX_LENGTH;
+
 // 3-1. 저장 / 불러오기
 function saveTodos() {
   try {
@@ -73,8 +79,8 @@ function normalizeTodo(item) {
     id: item.id,
     title: item.title,
     content: typeof item.content === "string" ? item.content : "",
-    date: typeof item.date === "string" ? item.date : "",
-    time: typeof item.time === "string" ? item.time : "",
+    date: DATE_PATTERN.test(item.date) ? item.date : "",
+    time: TIME_PATTERN.test(item.time) ? item.time : "",
     done: item.done === true
   };
 }
@@ -214,6 +220,18 @@ function makeCountText(allTodos, visibleTodos) {
   return text;
 }
 
+// 제목 검사: 문제가 있으면 안내 문구, 없으면 빈 글자("")를 돌려줌
+// [순수 함수]
+function validateTitle(title) {
+  if (title === "") {
+    return "제목을 입력하세요.";
+  }
+  if (title.length > TITLE_MAX_LENGTH) {
+    return `제목은 ${TITLE_MAX_LENGTH}자 이내로 입력하세요.`;
+  }
+  return "";
+}
+
 // 3-3. 목록을 새 값으로 바꾸고, 저장하고, 화면을 다시 그리기 (세 단계를 한 번에)
 function setTodos(nextTodos) {
   todos = nextTodos;
@@ -243,14 +261,14 @@ function renderTodos() {
 function makeItem(todo, today) {
   const li = document.createElement("li");
   li.dataset.id = todo.id;   // 위임 처리에서 "어느 항목인지" 알아내는 용도
-  li.className = "flex items-center justify-between px-[30px] py-3 border-b border-gray-200 hover:bg-gray-50";
+  li.className = "flex items-center justify-between gap-3 px-[30px] py-3 border-b border-gray-200 hover:bg-gray-50";
 
   // 왼쪽(체크 + 제목/날짜), 오른쪽(수정/삭제)
   const left = document.createElement("div");
-  left.className = "flex items-start gap-3";
+  left.className = "flex items-start gap-3 min-w-0";
   left.append(makeCheckButton(todo), makeInfo(todo, today));
 
-  li.append(left, makeButtons(todo));
+  li.append(left, makeButtons());
   return li;
 }
 
@@ -275,7 +293,7 @@ function makeCheckButton(todo) {
 function makeInfo(todo, today) {
   const info = document.createElement("div");
   info.dataset.action = "detail";
-  info.className = "cursor-pointer";
+  info.className = "cursor-pointer min-w-0";
   info.append(makeTitle(todo), makeDateLabel(todo, today));
   return info;
 }
@@ -283,7 +301,7 @@ function makeInfo(todo, today) {
 // 제목 (완료되면 취소선)
 function makeTitle(todo) {
   const title = document.createElement("p");
-  title.className = todo.done ? "text-sm text-gray-400 line-through" : "text-sm";
+  title.className = todo.done ? "text-sm text-gray-400 line-through break-words" : "text-sm break-words";
   title.textContent = todo.title;
   return title;
 }
@@ -309,9 +327,9 @@ function makeDateLabel(todo, today) {
 }
 
 // 수정, 삭제 버튼 묶음
-function makeButtons(todo) {
+function makeButtons() {
   const box = document.createElement("div");
-  box.className = "flex gap-2 self-end";
+  box.className = "flex gap-2 self-end shrink-0 whitespace-nowrap";
   box.append(
     createActionButton("수정", "edit", "text-[#228B22]"),
     createActionButton("삭제", "delete", "text-[#f87171]")
@@ -416,8 +434,8 @@ function openDetailPopup(id) {
 // 빠른 추가: 제목만 넣고 바로 등록 (날짜, 시간, 내용은 비워둠)
 function quickAdd() {
   const title = mainInput.value.trim();
-  if (title === "") {
-    return;   // 비어 있으면 아무것도 안 함
+  if (validateTitle(title) !== "") {
+    return;   // 비었으면 조용히 무시 (너무 긴 제목은 입력창 maxlength가 이미 막음)
   }
 
   setTodos(addTodo(todos, createTodo({ title: title })));
@@ -455,8 +473,9 @@ function openEditPopup(id) {
 function submitForm() {
   const title = titleInput.value.trim();   // 앞뒤 공백 제거
 
-  if (title === "") {
-    errorMsg.textContent = "제목을 입력하세요.";
+  const error = validateTitle(title);
+  errorMsg.textContent = error;   // 문제가 없으면 ""라서 이전 에러 문구도 지워짐
+  if (error !== "") {
     return;   // 팝업은 그대로 두고 끝
   }
 
@@ -490,7 +509,11 @@ function openDeletePopup(id) {
 }
 
 function confirmDelete() {
+  if (deletingId === null) {
+    return;   // 삭제할 항목이 정해지지 않았으면 아무것도 안 함
+  }
   setTodos(removeTodo(todos, deletingId));
+  deletingId = null;
   closePopup(deletePopup);
 }
 
@@ -521,7 +544,12 @@ function handleListClick(event) {
     return;   // 동작이 없는 곳을 누름
   }
 
-  const id = Number(actionEl.closest("li").dataset.id);   // data는 글자라서 숫자로 바꿈
+  const li = actionEl.closest("li");
+  if (li === null) {
+    return;   // 항목 안이 아니면 무시
+  }
+
+  const id = Number(li.dataset.id);   // data는 글자라서 숫자로 바꿈
   const action = LIST_ACTIONS[actionEl.dataset.action];
   if (action !== undefined) {
     action(id);
