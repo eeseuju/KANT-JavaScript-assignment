@@ -1,8 +1,12 @@
-# Todo 웹 문서 구현
+# Todo (HTML · CSS · JavaScript)
 
-구글 Tasks를 참고해 만든 Todo 웹 문서입니다. 할 일을 추가·수정·삭제·조회할 수 있습니다.
-- HTML5, CSS3, Tailwind CSS, 프레임워크 없는 JavaScript로 구현
-- 데이터는 브라우저 localStorage에 저장 (새로고침해도 목록 유지)
+구글 Tasks를 참고해 만든 Todo 웹 문서입니다. 할일을 추가 · 수정 · 삭제 · 조회할 수 있습니다. 데이터는 브라우저의 localStorage에 저장합니다.
+
+<br>
+
+> **개발환경**
+>
+> HTML · Tailwind CSS · JavaScript
 
 <br>
 
@@ -19,10 +23,9 @@
 
 ## 1. 실행 방법
 
-`index.html`을 브라우저로 엽니다. (설치나 빌드는 필요 없습니다. Tailwind와 폰트를 불러오므로 인터넷 연결이 필요합니다.)
-
-저장된 데이터를 보고 싶으면 `index.html`과 같은 방식으로 `debug.html`을 다른 탭에 열면 됩니다.  
-할 일 내역이 업데이트될 때마다 0.5초 안에 화면이 갱신됩니다. 저장된 값이 깨져 있어도 원래 글자를 그대로 보여줍니다.
+- `index.html`을 브라우저로 엽니다. 설치나 빌드는 필요 없습니다. 다만, Tailwind와 폰트를 불러오므로 인터넷 연결이 필요합니다.
+- 저장된 데이터를 보고 싶으면 `index.html`과 같은 방식으로 `debug.html`을 다른 탭에 열면 됩니다.  
+- 할 일 내역이 업데이트될 때마다 0.5초 안에 화면이 갱신됩니다. 저장된 값이 깨져 있어도 원래 글자를 그대로 보여줍니다.
 
 <br>
 
@@ -117,7 +120,7 @@ css/style.css   색 변수, 공통 스타일 클래스, 팝업, 따봉 애니메
 
 `#`이 붙은 이름은 `id`이고, JS가 `document.getElementById`로 찾아서 씁니다.
 
-### index.html (요약)
+### index.html
 
 ```text
 body
