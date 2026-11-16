@@ -209,7 +209,7 @@ body
 ## 7. 시연 영상
 
 <p align="center">
-  <img src="demo.gif" alt="Todo 웹 문서 시연" width="80%">
+  <img src="demo-js-g.gif" alt="Todo 웹 문서 시연" width="80%">
 </p>
 
 <br>
