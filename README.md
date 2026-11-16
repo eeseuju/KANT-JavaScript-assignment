@@ -208,7 +208,9 @@ body
 
 ## 7. 시연 영상
 
-(연결 예정)
+<p align="center">
+  <img src="demo.gif" alt="Todo 웹 문서 시연" width="80%">
+</p>
 
 <br>
 
